@@ -1,0 +1,4 @@
+ANTHROPIC_API_KEY
+__pycache__/
+.DS_Store
+.env
