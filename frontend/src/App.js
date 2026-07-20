@@ -376,18 +376,26 @@ function App() {
                 onChange={async (e) => {
                   const file = e.target.files[0];
                   if (!file) return;
+                  setIngredients("Analyzing your fridge...");
+                  setError("");
                   const formData = new FormData();
                   formData.append("file", file);
-                  const res = await fetch("https://nouri-production-ed93.up.railway.app/analyze-fridge", {
-                    method: "POST",
-                    body: formData
-                  });
-                  const data = await res.json();
-                  if (data.error) {
-                    setError(data.error);
-                  } else {
-                    setIngredients(data.ingredients);
-                    setError("");
+                  try {
+                    const res = await fetch("https://nouri-production-ed93.up.railway.app/analyze-fridge", {
+                      method: "POST",
+                      body: formData
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                      setIngredients("");
+                      setError(data.error);
+                    } else {
+                      setIngredients(data.ingredients);
+                      setError("");
+                    }
+                  } catch (err) {
+                    setIngredients("");
+                    setError("Failed to analyze image. Please try again.");
                   }
                 }}
                 style={{ width: "100%", padding: "12px", border: "1px dashed #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", fontSize: "13px", boxSizing: "border-box", cursor: "pointer" }}
