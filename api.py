@@ -83,7 +83,7 @@ async def analyze_fridge(file: UploadFile = File(...)):
     )
 
     if "NO" in validation.content[0].text.upper():
-        return {"error": "Please upload a photo of your fridge or ingredients."}
+        return {"error": "The image you uploaded doesn't appear to show a fridge or food ingredients. Please take a photo of your fridge, pantry, or the ingredients you have available."}
 
     response = client.messages.create(
         model="claude-opus-4-8",
