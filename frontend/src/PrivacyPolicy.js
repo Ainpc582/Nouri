@@ -11,7 +11,7 @@ function PrivacyPolicy() {
 
       <h2 style={{ fontSize: "16px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>AI Disclosure</h2>
       <p style={{ lineHeight: "1.8", color: "#444", marginBottom: "32px" }}>
-        Nouri uses artificial intelligence to generate recipes. Specifically, your inputs — including ingredients, calorie targets, macro goals, dietary preferences, and dish names — are sent to Anthropic's Claude AI model to generate personalized recipe responses. By using Nouri, you acknowledge that your inputs are processed by a third-party AI provider (Anthropic). We encourage you not to include any sensitive personal information in your recipe requests.
+        Nouri uses artificial intelligence to generate recipes. Your inputs — including ingredients, calorie targets, macro goals, dietary preferences, and dish names — are processed by a third-party AI provider to generate personalized recipe responses. By using Nouri, you acknowledge that your inputs are processed by an external AI system. We encourage you not to include any sensitive personal information in your recipe requests.
       </p>
 
       <h2 style={{ fontSize: "16px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>Information We Collect</h2>
@@ -24,7 +24,7 @@ function PrivacyPolicy() {
         Nouri uses the following third-party services to operate:
       </p>
       <ul style={{ color: "#444", lineHeight: "2", marginBottom: "32px" }}>
-        <li><strong>Anthropic (Claude AI)</strong> — processes your recipe inputs to generate responses</li>
+        <li><strong>AI Provider</strong> — processes your recipe inputs to generate responses</li>
         <li><strong>Vercel</strong> — hosts our frontend application</li>
         <li><strong>Railway</strong> — hosts our backend server</li>
       </ul>

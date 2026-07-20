@@ -561,7 +561,7 @@ function App() {
       <div style={{ borderTop: "1px solid #e0e0e0", padding: "24px", textAlign: "center", marginTop: "48px" }}>
         <a href="/privacy" style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", textDecoration: "none" }}>Privacy Policy</a>
         <span style={{ color: "#e0e0e0", margin: "0 12px" }}>|</span>
-        <span style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888" }}>Powered by Claude AI</span>
+        <span style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888" }}>© 2026 Nouri</span>
       </div>
     </div>
   );
