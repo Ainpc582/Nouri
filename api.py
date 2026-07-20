@@ -25,22 +25,24 @@ class RecipeRequest(BaseModel):
     fat: str = ""
     dish_name: str = ""
     dietary_prefs: list = []
+    servings: str = "1"
 
 @app.post("/recipe")
 def create_recipe(request: RecipeRequest):
     dietary = f" ({', '.join(request.dietary_prefs)})" if request.dietary_prefs else ""
+    servings = f" for {request.servings} serving(s)" if request.servings != "1" else ""
 
     if request.mode == "1":
-        prompt = f"Create a healthy{dietary} recipe using these ingredients: {request.ingredients}"
+        prompt = f"Create a healthy{dietary} recipe{servings} using these ingredients: {request.ingredients}"
     elif request.mode == "2":
         if request.dish_name:
-            prompt = f"Create a healthy{dietary} {request.dish_name} recipe with {request.calories} calories"
+            prompt = f"Create a healthy{dietary} {request.dish_name} recipe{servings} with {request.calories} calories"
         else:
-            prompt = f"Create a healthy{dietary} recipe with {request.calories} calories"
+            prompt = f"Create a healthy{dietary} recipe{servings} with {request.calories} calories"
     elif request.mode == "3":
-        prompt = f"Create a healthy{dietary} recipe with {request.calories} calories, {request.protein}g protein, {request.carbs}g carbohydrates, {request.fat}g fat"
+        prompt = f"Create a healthy{dietary} recipe{servings} with {request.calories} calories, {request.protein}g protein, {request.carbs}g carbohydrates, {request.fat}g fat"
     elif request.mode == "4":
-        prompt = f"Create a healthy{dietary} {request.dish_name} recipe"
+        prompt = f"Create a healthy{dietary} {request.dish_name} recipe{servings}"
 
     recipe = get_recipe(prompt)
     macros = extract_macros(recipe)

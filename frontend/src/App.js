@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 function App() {
+  const [servings, setServings] = useState("1");
   const [dietaryPrefs, setDietaryPrefs] = useState([]);
   const [mode, setMode] = useState("1");
   const [ingredients, setIngredients] = useState("");
@@ -13,7 +14,16 @@ function App() {
   const [macros, setMacros] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const saveRecipe = () => {
+    const content = `${recipe}\n\nNutrition Per Serving:\nCalories: ${macros.calories}\nProtein: ${macros.protein}\nCarbs: ${macros.carbs}\nFat: ${macros.fat}`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nouri-recipe.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const handleSubmit = async () => {
     if (mode === "1" && !ingredients.trim()) {
       setError("Please enter your ingredients.");
@@ -48,6 +58,7 @@ function App() {
             fat,
             dish_name: dishName,
             dietary_prefs: dietaryPrefs,
+            servings,
           }),
         }
       );
@@ -196,25 +207,46 @@ function App() {
       >
         {/* Dietary Preferences */}
         <div style={{ marginBottom: "32px" }}>
-          <p style={{ fontFamily: "sans-serif", fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#888", marginBottom: "12px" }}>
+          <p
+            style={{
+              fontFamily: "sans-serif",
+              fontSize: "12px",
+              fontWeight: "600",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "#888",
+              marginBottom: "12px",
+            }}
+          >
             Dietary Preferences
           </p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {["Vegan", "Vegetarian", "Gluten-Free", "Dairy-Free", "Keto", "High Protein"].map((pref) => (
+            {[
+              "Vegan",
+              "Vegetarian",
+              "Gluten-Free",
+              "Dairy-Free",
+              "Keto",
+              "High Protein",
+            ].map((pref) => (
               <div
                 key={pref}
                 onClick={() => togglePref(pref)}
                 style={{
                   padding: "8px 16px",
-                  border: dietaryPrefs.includes(pref) ? "2px solid #1a1a1a" : "2px solid #e0e0e0",
+                  border: dietaryPrefs.includes(pref)
+                    ? "2px solid #1a1a1a"
+                    : "2px solid #e0e0e0",
                   borderRadius: "100px",
                   cursor: "pointer",
-                  backgroundColor: dietaryPrefs.includes(pref) ? "#1a1a1a" : "#fff",
+                  backgroundColor: dietaryPrefs.includes(pref)
+                    ? "#1a1a1a"
+                    : "#fff",
                   fontFamily: "sans-serif",
                   fontSize: "13px",
                   fontWeight: "500",
                   color: dietaryPrefs.includes(pref) ? "#fff" : "#444",
-                  transition: "all 0.15s"
+                  transition: "all 0.15s",
                 }}
               >
                 {pref}
@@ -229,7 +261,17 @@ function App() {
                 e.target.value = "";
               }
             }}
-            style={{ marginTop: "10px", width: "100%", padding: "10px", fontSize: "13px", border: "1px solid #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", boxSizing: "border-box", outline: "none" }}
+            style={{
+              marginTop: "10px",
+              width: "100%",
+              padding: "10px",
+              fontSize: "13px",
+              border: "1px solid #e0e0e0",
+              borderRadius: "8px",
+              fontFamily: "sans-serif",
+              boxSizing: "border-box",
+              outline: "none",
+            }}
           />
         </div>
 
@@ -434,6 +476,35 @@ function App() {
           )}
         </div>
 
+        {/* Servings */}
+        <div style={{ marginBottom: "24px" }}>
+          <p style={{ fontFamily: "sans-serif", fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#888", marginBottom: "12px" }}>
+            Servings
+          </p>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {["1", "2", "4", "6"].map((n) => (
+              <div
+                key={n}
+                onClick={() => setServings(n)}
+                style={{
+                  padding: "10px 20px",
+                  border: servings === n ? "2px solid #1a1a1a" : "2px solid #e0e0e0",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  backgroundColor: servings === n ? "#1a1a1a" : "#fff",
+                  fontFamily: "sans-serif",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: servings === n ? "#fff" : "#444",
+                  transition: "all 0.15s"
+                }}
+              >
+                {n}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {error && (
           <p
             style={{
@@ -466,6 +537,26 @@ function App() {
         >
           {loading ? "Generating your recipe..." : "Generate Recipe"}
         </button>
+        {recipe && (
+          <button
+            onClick={saveRecipe}
+            style={{
+              width: "100%",
+              padding: "16px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "2px solid #1a1a1a",
+              borderRadius: "8px",
+              fontSize: "15px",
+              fontFamily: "sans-serif",
+              fontWeight: "600",
+              cursor: "pointer",
+              marginTop: "12px",
+            }}
+          >
+            Save Recipe
+          </button>
+        )}
 
         {/* Macros Card */}
         {macros && (
@@ -558,12 +649,43 @@ function App() {
       </div>
 
       {/* Footer */}
-      <div style={{ borderTop: "1px solid #e0e0e0", padding: "24px", textAlign: "center", marginTop: "48px" }}>
-        <a href="/privacy" style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", textDecoration: "none" }}>Privacy Policy</a>
+      <div
+        style={{
+          borderTop: "1px solid #e0e0e0",
+          padding: "24px",
+          textAlign: "center",
+          marginTop: "48px",
+        }}
+      >
+        <a
+          href="/privacy"
+          style={{
+            fontFamily: "sans-serif",
+            fontSize: "12px",
+            color: "#888",
+            textDecoration: "none",
+          }}
+        >
+          Privacy Policy
+        </a>
         <span style={{ color: "#e0e0e0", margin: "0 12px" }}>|</span>
-        <a href="/terms" style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", textDecoration: "none" }}>Terms of Service</a>
+        <a
+          href="/terms"
+          style={{
+            fontFamily: "sans-serif",
+            fontSize: "12px",
+            color: "#888",
+            textDecoration: "none",
+          }}
+        >
+          Terms of Service
+        </a>
         <span style={{ color: "#e0e0e0", margin: "0 12px" }}>|</span>
-        <span style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888" }}>© 2026 Nouri</span>
+        <span
+          style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888" }}
+        >
+          © 2026 Nouri
+        </span>
       </div>
     </div>
   );
