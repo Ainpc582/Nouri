@@ -1,4 +1,23 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import "./App.css";
+
+const BACKEND = "https://nouri-production-ed93.up.railway.app";
+
+function SkeletonRecipe() {
+  return (
+    <div style={{ marginTop: "24px", padding: "40px", backgroundColor: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px" }}>
+      <div className="skeleton" style={{ height: "28px", width: "60%", marginBottom: "24px" }} />
+      <div className="skeleton" style={{ height: "14px", width: "20%", marginBottom: "16px" }} />
+      {[90, 75, 85, 65, 80].map((w, i) => (
+        <div key={i} className="skeleton" style={{ height: "13px", width: `${w}%`, marginBottom: "10px" }} />
+      ))}
+      <div className="skeleton" style={{ height: "14px", width: "25%", margin: "24px 0 16px 0" }} />
+      {[95, 70, 88, 72, 60].map((w, i) => (
+        <div key={i} className="skeleton" style={{ height: "13px", width: `${w}%`, marginBottom: "10px" }} />
+      ))}
+    </div>
+  );
+}
 
 function App() {
   const [servings, setServings] = useState("1");
@@ -13,7 +32,12 @@ function App() {
   const [recipe, setRecipe] = useState("");
   const [macros, setMacros] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
+
   const saveRecipe = () => {
     const content = `${recipe}\n\nNutrition Per Serving:\nCalories: ${macros.calories}\nProtein: ${macros.protein}\nCarbs: ${macros.carbs}\nFat: ${macros.fat}`;
     const blob = new Blob([content], { type: "text/plain" });
@@ -24,19 +48,11 @@ function App() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
   const handleSubmit = async () => {
-    if (mode === "1" && !ingredients.trim()) {
-      setError("Please enter your ingredients.");
-      return;
-    }
-    if (mode === "2" && !calories.trim()) {
-      setError("Please enter a calorie target.");
-      return;
-    }
-    if (mode === "4" && !dishName.trim()) {
-      setError("Please enter a dish name.");
-      return;
-    }
+    if (mode === "1" && !ingredients.trim()) { setError("Please enter your ingredients."); return; }
+    if (mode === "2" && !calories.trim()) { setError("Please enter a calorie target."); return; }
+    if (mode === "4" && !dishName.trim()) { setError("Please enter a dish name."); return; }
 
     setError("");
     setLoading(true);
@@ -44,294 +60,123 @@ function App() {
     setMacros(null);
 
     try {
-      const response = await fetch(
-        "https://nouri-production-ed93.up.railway.app/recipe",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode,
-            ingredients,
-            calories,
-            protein,
-            carbs,
-            fat,
-            dish_name: dishName,
-            dietary_prefs: dietaryPrefs,
-            servings,
-          }),
-        }
-      );
+      const response = await fetch(`${BACKEND}/recipe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, ingredients, calories, protein, carbs, fat, dish_name: dishName, dietary_prefs: dietaryPrefs, servings }),
+      });
       const data = await response.json();
       setRecipe(data.recipe);
       setMacros(data.macros);
-    } catch (err) {
-      setError(
-        "Something went wrong. Make sure the backend server is running."
-      );
+    } catch {
+      setError("Something went wrong. Make sure the backend server is running.");
     }
-
     setLoading(false);
   };
+
   const togglePref = (pref) => {
-    setDietaryPrefs((prev) =>
-      prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]
-    );
+    setDietaryPrefs((prev) => prev.includes(pref) ? prev.filter((p) => p !== pref) : [...prev, pref]);
   };
+
+  const analyzeImage = async (file) => {
+    if (!file) return;
+    setImagePreview(URL.createObjectURL(file));
+    setAnalyzing(true);
+    setIngredients("Analyzing your fridge...");
+    setError("");
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch(`${BACKEND}/analyze-fridge`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.error) {
+        setIngredients("");
+        setImagePreview(null);
+        setError(data.error);
+      } else {
+        setIngredients(data.ingredients);
+      }
+    } catch {
+      setIngredients("");
+      setImagePreview(null);
+      setError("Failed to analyze image. Please try again.");
+    }
+    setAnalyzing(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) analyzeImage(file);
+  };
+
   const formatRecipe = (text) => {
     return text.split("\n").map((line, i) => {
-      if (line.startsWith("# "))
-        return (
-          <h1
-            key={i}
-            style={{
-              fontSize: "28px",
-              fontWeight: "700",
-              margin: "0 0 16px 0",
-              color: "#1a1a1a",
-            }}
-          >
-            {line.replace("# ", "")}
-          </h1>
-        );
-      if (line.startsWith("## "))
-        return (
-          <h2
-            key={i}
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              margin: "24px 0 8px 0",
-              color: "#1a1a1a",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {line.replace("## ", "")}
-          </h2>
-        );
-      if (line.startsWith("- "))
-        return (
-          <li
-            key={i}
-            style={{ margin: "4px 0", color: "#444", lineHeight: "1.6" }}
-          >
-            {line.replace("- ", "")}
-          </li>
-        );
-      if (line.match(/^\d+\./))
-        return (
-          <li
-            key={i}
-            style={{ margin: "8px 0", color: "#444", lineHeight: "1.6" }}
-          >
-            {line}
-          </li>
-        );
-      if (line.startsWith("MACROS:")) return null;
-      if (
-        line.startsWith("Calories:") ||
-        line.startsWith("Protein:") ||
-        line.startsWith("Carbohydrates:") ||
-        line.startsWith("Fat:")
-      )
-        return null;
-      if (line.trim() === "") return <br key={i} />;
-      return (
-        <p
-          key={i}
-          style={{ margin: "4px 0", color: "#444", lineHeight: "1.6" }}
-        >
-          {line}
-        </p>
-      );
+      if (line.startsWith("# ")) return <h1 key={i} style={{ fontSize: "26px", fontWeight: "700", margin: "0 0 16px 0", color: "#1a1a1a", fontFamily: "Georgia, serif" }}>{line.replace("# ", "")}</h1>;
+      if (line.startsWith("## ")) return <h2 key={i} style={{ fontSize: "13px", fontWeight: "700", margin: "28px 0 10px 0", color: "#1a1a1a", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "sans-serif" }}>{line.replace("## ", "")}</h2>;
+      if (line.startsWith("**") && line.endsWith("**")) return <h2 key={i} style={{ fontSize: "13px", fontWeight: "700", margin: "28px 0 10px 0", color: "#1a1a1a", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "sans-serif" }}>{line.replace(/\*\*/g, "")}</h2>;
+      if (line.startsWith("- ")) return <li key={i} style={{ margin: "6px 0", color: "#444", lineHeight: "1.7", fontFamily: "Georgia, serif", fontSize: "15px" }}>{line.replace("- ", "")}</li>;
+      if (line.match(/^\d+\./)) return <li key={i} style={{ margin: "10px 0", color: "#444", lineHeight: "1.7", fontFamily: "Georgia, serif", fontSize: "15px" }}>{line}</li>;
+      if (line.startsWith("MACROS:") || line.startsWith("Calories:") || line.startsWith("Protein:") || line.startsWith("Carbohydrates:") || line.startsWith("Fat:")) return null;
+      if (line.trim() === "") return <div key={i} style={{ height: "8px" }} />;
+      return <p key={i} style={{ margin: "4px 0", color: "#555", lineHeight: "1.7", fontFamily: "Georgia, serif", fontSize: "15px" }}>{line}</p>;
     });
   };
 
   const modes = [
-    {
-      value: "1",
-      label: "Fridge Mode",
-      desc: "Generate a recipe from ingredients you have",
-    },
-    {
-      value: "2",
-      label: "Calorie Target",
-      desc: "Hit a specific calorie goal",
-    },
-    { value: "3", label: "Custom Macros", desc: "Set your own macro targets" },
+    { value: "1", label: "Fridge Mode", desc: "Use what you have" },
+    { value: "2", label: "Calorie Target", desc: "Hit a specific goal" },
+    { value: "3", label: "Custom Macros", desc: "Set your own targets" },
     { value: "4", label: "Free Mode", desc: "Enter any dish name" },
   ];
 
   return (
-    <div
-      style={{
-        fontFamily: "'Georgia', serif",
-        minHeight: "100vh",
-        backgroundColor: "#fafafa",
-      }}
-    >
+    <div style={{ fontFamily: "'Georgia', serif", minHeight: "100vh", backgroundColor: "#fafafa" }}>
+
       {/* Header */}
-      <div
-        style={{
-          borderBottom: "1px solid #e0e0e0",
-          backgroundColor: "#fff",
-          padding: "20px 40px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "2px",
-        }}
-      >
-        <img
-          src="/logo.png"
-          alt="Nouri"
-          style={{ height: "150px", objectFit: "contain" }}
-        />
-        <p
-          style={{
-            margin: 0,
-            color: "#1a1a1a",
-            fontSize: "15px",
-            fontFamily: "Georgia, serif",
-            fontStyle: "italic",
-            letterSpacing: "0.15em",
-          }}
-        >
+      <div style={{ borderBottom: "1px solid #e8e8e8", backgroundColor: "#fff", padding: "20px 40px", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+        <img src="/logo.png" alt="Nouri" style={{ height: "140px", objectFit: "contain" }} />
+        <p style={{ margin: 0, color: "#888", fontSize: "14px", fontFamily: "Georgia, serif", fontStyle: "italic", letterSpacing: "0.15em" }}>
           Eat with intention. Fuel with purpose.
         </p>
       </div>
 
-      <div
-        style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 24px" }}
-      >
+      <div style={{ maxWidth: "680px", margin: "0 auto", padding: "48px 24px" }}>
+
         {/* Dietary Preferences */}
-        <div style={{ marginBottom: "32px" }}>
-          <p
-            style={{
-              fontFamily: "sans-serif",
-              fontSize: "12px",
-              fontWeight: "600",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "#888",
-              marginBottom: "12px",
-            }}
-          >
-            Dietary Preferences
-          </p>
+        <div style={{ marginBottom: "36px" }}>
+          <p className="section-label">Dietary Preferences</p>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {[
-              "Vegan",
-              "Vegetarian",
-              "Gluten-Free",
-              "Dairy-Free",
-              "Keto",
-              "High Protein",
-            ].map((pref) => (
-              <div
-                key={pref}
-                onClick={() => togglePref(pref)}
-                style={{
-                  padding: "8px 16px",
-                  border: dietaryPrefs.includes(pref)
-                    ? "2px solid #1a1a1a"
-                    : "2px solid #e0e0e0",
-                  borderRadius: "100px",
-                  cursor: "pointer",
-                  backgroundColor: dietaryPrefs.includes(pref)
-                    ? "#1a1a1a"
-                    : "#fff",
-                  fontFamily: "sans-serif",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  color: dietaryPrefs.includes(pref) ? "#fff" : "#444",
-                  transition: "all 0.15s",
-                }}
-              >
+            {["Vegan", "Vegetarian", "Gluten-Free", "Dairy-Free", "Keto", "High Protein"].map((pref) => (
+              <div key={pref} className={`pref-chip ${dietaryPrefs.includes(pref) ? "active" : ""}`} onClick={() => togglePref(pref)}>
                 {pref}
               </div>
             ))}
           </div>
           <input
-            placeholder="Add custom diet (e.g. Paleo, Halal, Kosher)... press Enter"
+            className="text-input"
+            placeholder="Add custom diet (e.g. Paleo, Halal)… press Enter"
+            style={{ marginTop: "10px", fontSize: "13px", padding: "10px 14px" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && e.target.value.trim()) {
                 togglePref(e.target.value.trim());
                 e.target.value = "";
               }
             }}
-            style={{
-              marginTop: "10px",
-              width: "100%",
-              padding: "10px",
-              fontSize: "13px",
-              border: "1px solid #e0e0e0",
-              borderRadius: "8px",
-              fontFamily: "sans-serif",
-              boxSizing: "border-box",
-              outline: "none",
-            }}
           />
         </div>
 
         {/* Mode Selector */}
-        <div style={{ marginBottom: "32px" }}>
-          <p
-            style={{
-              fontFamily: "sans-serif",
-              fontSize: "12px",
-              fontWeight: "600",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "#888",
-              marginBottom: "12px",
-            }}
-          >
-            Select Mode
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-            }}
-          >
+        <div style={{ marginBottom: "36px" }}>
+          <p className="section-label">Select Mode</p>
+          <div className="mode-grid">
             {modes.map((m) => (
-              <div
-                key={m.value}
-                onClick={() => setMode(m.value)}
-                style={{
-                  padding: "16px",
-                  border:
-                    mode === m.value
-                      ? "2px solid #1a1a1a"
-                      : "2px solid #e0e0e0",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  backgroundColor: mode === m.value ? "#1a1a1a" : "#fff",
-                  transition: "all 0.15s",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontFamily: "sans-serif",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                    color: mode === m.value ? "#fff" : "#1a1a1a",
-                  }}
-                >
+              <div key={m.value} className={`mode-card ${mode === m.value ? "active" : ""}`} onClick={() => setMode(m.value)}>
+                <p style={{ margin: 0, fontFamily: "sans-serif", fontWeight: "600", fontSize: "14px", color: mode === m.value ? "#fff" : "#1a1a1a" }}>
                   {m.label}
                 </p>
-                <p
-                  style={{
-                    margin: "4px 0 0 0",
-                    fontFamily: "sans-serif",
-                    fontSize: "12px",
-                    color: mode === m.value ? "#ccc" : "#888",
-                  }}
-                >
+                <p style={{ margin: "4px 0 0 0", fontFamily: "sans-serif", fontSize: "12px", color: mode === m.value ? "#ccc" : "#888" }}>
                   {m.desc}
                 </p>
               </div>
@@ -340,187 +185,105 @@ function App() {
         </div>
 
         {/* Input Fields */}
-        <div style={{ marginBottom: "24px" }}>
-          <p
-            style={{
-              fontFamily: "sans-serif",
-              fontSize: "12px",
-              fontWeight: "600",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: "#888",
-              marginBottom: "12px",
-            }}
-          >
-            {mode === "1"
-              ? "Your Ingredients"
-              : mode === "2"
-              ? "Calorie Target"
-              : mode === "3"
-              ? "Macro Targets"
-              : "Dish Name"}
+        <div style={{ marginBottom: "28px" }}>
+          <p className="section-label">
+            {mode === "1" ? "Your Ingredients" : mode === "2" ? "Calorie Target" : mode === "3" ? "Macro Targets" : "Dish Name"}
           </p>
 
           {mode === "1" && (
             <div>
-              <input
+              <textarea
+                className="text-input"
                 placeholder="e.g. chicken, rice, broccoli, garlic"
-                value={ingredients}
+                value={analyzing ? "Analyzing your fridge..." : ingredients}
                 onChange={(e) => setIngredients(e.target.value)}
-                style={{ width: "100%", padding: "14px", fontSize: "15px", border: "1px solid #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", boxSizing: "border-box", outline: "none" }}
+                rows={3}
+                style={{ resize: "vertical", lineHeight: "1.6" }}
               />
-              <p style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", margin: "12px 0 8px 0", textAlign: "center" }}>— or upload a photo of your fridge —</p>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  setIngredients("Analyzing your fridge...");
-                  setError("");
-                  const formData = new FormData();
-                  formData.append("file", file);
-                  try {
-                    const res = await fetch("https://nouri-production-ed93.up.railway.app/analyze-fridge", {
-                      method: "POST",
-                      body: formData
-                    });
-                    const data = await res.json();
-                    if (data.error) {
-                      setIngredients("");
-                      setError(data.error);
-                    } else {
-                      setIngredients(data.ingredients);
-                      setError("");
-                    }
-                  } catch (err) {
-                    setIngredients("");
-                    setError("Failed to analyze image. Please try again.");
-                  }
-                }}
-                style={{ width: "100%", padding: "12px", border: "1px dashed #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", fontSize: "13px", boxSizing: "border-box", cursor: "pointer" }}
-              />
+
+              <p style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#aaa", margin: "16px 0 10px 0", textAlign: "center", letterSpacing: "0.05em" }}>
+                — or upload a photo —
+              </p>
+
+              <div
+                className={`upload-zone ${dragOver ? "drag-over" : ""}`}
+                onClick={() => fileInputRef.current.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+              >
+                {imagePreview ? (
+                  <div>
+                    <img src={imagePreview} alt="Fridge preview" style={{ maxHeight: "160px", maxWidth: "100%", borderRadius: "8px", objectFit: "cover", marginBottom: "10px" }} />
+                    <p style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", margin: 0 }}>
+                      {analyzing ? "Analyzing ingredients..." : "Tap to upload a different photo"}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: "32px", marginBottom: "8px" }}>📷</div>
+                    <p style={{ fontFamily: "sans-serif", fontSize: "14px", color: "#555", margin: "0 0 4px 0", fontWeight: "500" }}>
+                      Drag & drop or tap to upload
+                    </p>
+                    <p style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#aaa", margin: 0 }}>
+                      Photo of your fridge or ingredients
+                    </p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => analyzeImage(e.target.files[0])}
+                />
+              </div>
             </div>
           )}
+
           {mode === "2" && (
-            <div>
-              <input
-                placeholder="e.g. 500"
-                value={calories}
-                onChange={(e) => setCalories(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  fontSize: "15px",
-                  border: "1px solid #e0e0e0",
-                  borderRadius: "8px",
-                  fontFamily: "sans-serif",
-                  boxSizing: "border-box",
-                  outline: "none",
-                }}
-              />
-              <input
-                placeholder="Suggest a dish name (optional)"
-                value={dishName}
-                onChange={(e) => setDishName(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  fontSize: "15px",
-                  border: "1px solid #e0e0e0",
-                  borderRadius: "8px",
-                  fontFamily: "sans-serif",
-                  boxSizing: "border-box",
-                  outline: "none",
-                  marginTop: "12px",
-                }}
-              />
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <input className="text-input" placeholder="Calorie target (e.g. 500)" value={calories} onChange={(e) => setCalories(e.target.value)} />
+              <input className="text-input" placeholder="Suggest a dish name (optional)" value={dishName} onChange={(e) => setDishName(e.target.value)} />
             </div>
           )}
+
           {mode === "3" && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "12px",
-              }}
-            >
-              {[
-                ["Calories", calories, setCalories],
-                ["Protein (g)", protein, setProtein],
-                ["Carbs (g)", carbs, setCarbs],
-                ["Fat (g)", fat, setFat],
-              ].map(([label, val, setter]) => (
+            <div className="macro-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {[["Calories", calories, setCalories], ["Protein (g)", protein, setProtein], ["Carbs (g)", carbs, setCarbs], ["Fat (g)", fat, setFat]].map(([label, val, setter]) => (
                 <div key={label}>
-                  <p
-                    style={{
-                      fontFamily: "sans-serif",
-                      fontSize: "12px",
-                      color: "#888",
-                      margin: "0 0 4px 0",
-                    }}
-                  >
-                    {label}
-                  </p>
-                  <input
-                    placeholder="NA if indifferent"
-                    value={val}
-                    onChange={(e) => setter(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      fontSize: "14px",
-                      border: "1px solid #e0e0e0",
-                      borderRadius: "8px",
-                      fontFamily: "sans-serif",
-                      boxSizing: "border-box",
-                      outline: "none",
-                    }}
-                  />
+                  <p style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", margin: "0 0 6px 0", fontWeight: "500" }}>{label}</p>
+                  <input className="text-input" placeholder="NA if indifferent" value={val} onChange={(e) => setter(e.target.value)} style={{ padding: "12px 14px", fontSize: "14px" }} />
                 </div>
               ))}
             </div>
           )}
+
           {mode === "4" && (
-            <input
-              placeholder="e.g. Chicken Tikka Masala"
-              value={dishName}
-              onChange={(e) => setDishName(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                fontSize: "15px",
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                fontFamily: "sans-serif",
-                boxSizing: "border-box",
-                outline: "none",
-              }}
-            />
+            <input className="text-input" placeholder="e.g. Chicken Tikka Masala" value={dishName} onChange={(e) => setDishName(e.target.value)} />
           )}
         </div>
 
         {/* Servings */}
-        <div style={{ marginBottom: "24px" }}>
-          <p style={{ fontFamily: "sans-serif", fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#888", marginBottom: "12px" }}>
-            Servings
-          </p>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <div style={{ marginBottom: "28px" }}>
+          <p className="section-label">Servings</p>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
             {["1", "2", "4", "6"].map((n) => (
               <div
                 key={n}
                 onClick={() => setServings(n)}
                 style={{
-                  padding: "10px 20px",
+                  padding: "10px 22px",
                   border: servings === n ? "2px solid #1a1a1a" : "2px solid #e0e0e0",
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   cursor: "pointer",
                   backgroundColor: servings === n ? "#1a1a1a" : "#fff",
                   fontFamily: "sans-serif",
                   fontSize: "14px",
                   fontWeight: "600",
                   color: servings === n ? "#fff" : "#444",
-                  transition: "all 0.15s"
+                  transition: "all 0.15s",
+                  userSelect: "none",
                 }}
               >
                 {n}
@@ -531,132 +294,47 @@ function App() {
               min="1"
               placeholder="Custom"
               onChange={(e) => setServings(e.target.value)}
-              style={{ padding: "10px", width: "80px", border: "2px solid #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", fontSize: "14px", outline: "none", textAlign: "center" }}
+              className="text-input"
+              style={{ width: "90px", padding: "10px", textAlign: "center", fontSize: "14px" }}
             />
           </div>
         </div>
 
+        {/* Error */}
         {error && (
-          <p
-            style={{
-              color: "#c0392b",
-              fontFamily: "sans-serif",
-              fontSize: "14px",
-              marginBottom: "16px",
-            }}
-          >
-            {error}
-          </p>
+          <div style={{ backgroundColor: "#fff5f5", border: "1px solid #fcc", borderRadius: "10px", padding: "14px 16px", marginBottom: "20px" }}>
+            <p style={{ color: "#c0392b", fontFamily: "sans-serif", fontSize: "14px", margin: 0, lineHeight: "1.5" }}>{error}</p>
+          </div>
         )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "16px",
-            backgroundColor: loading ? "#888" : "#1a1a1a",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "15px",
-            fontFamily: "sans-serif",
-            fontWeight: "600",
-            cursor: loading ? "not-allowed" : "pointer",
-            letterSpacing: "0.02em",
-          }}
-        >
-          {loading ? "Generating your recipe..." : "Generate Recipe"}
+        {/* Generate Button */}
+        <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
+          {loading ? (
+            <>
+              <span className="spinner" />
+              Generating your recipe...
+            </>
+          ) : "Generate Recipe"}
         </button>
+
         {recipe && (
-          <button
-            onClick={saveRecipe}
-            style={{
-              width: "100%",
-              padding: "16px",
-              backgroundColor: "#fff",
-              color: "#1a1a1a",
-              border: "2px solid #1a1a1a",
-              borderRadius: "8px",
-              fontSize: "15px",
-              fontFamily: "sans-serif",
-              fontWeight: "600",
-              cursor: "pointer",
-              marginTop: "12px",
-            }}
-          >
-            Save Recipe
+          <button className="btn-secondary" onClick={saveRecipe}>
+            Save Recipe ↓
           </button>
         )}
 
+        {/* Loading Skeleton */}
+        {loading && <SkeletonRecipe />}
+
         {/* Macros Card */}
-        {macros && (
-          <div
-            style={{
-              marginTop: "40px",
-              padding: "24px",
-              backgroundColor: "#fff",
-              border: "1px solid #e0e0e0",
-              borderRadius: "8px",
-            }}
-          >
-            <p
-              style={{
-                fontFamily: "sans-serif",
-                fontSize: "12px",
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-                color: "#888",
-                margin: "0 0 16px 0",
-              }}
-            >
-              Nutrition Per Serving
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                gap: "16px",
-              }}
-            >
-              {[
-                ["Calories", macros.calories],
-                ["Protein", macros.protein],
-                ["Carbs", macros.carbs],
-                ["Fat", macros.fat],
-              ].map(([label, val]) => (
-                <div
-                  key={label}
-                  style={{
-                    textAlign: "center",
-                    padding: "16px",
-                    backgroundColor: "#fafafa",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "22px",
-                      fontWeight: "700",
-                      color: "#1a1a1a",
-                    }}
-                  >
-                    {val}
-                  </p>
-                  <p
-                    style={{
-                      margin: "4px 0 0 0",
-                      fontFamily: "sans-serif",
-                      fontSize: "11px",
-                      color: "#888",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {label}
-                  </p>
+        {macros && !loading && (
+          <div className="fade-in" style={{ marginTop: "40px", padding: "24px", backgroundColor: "#fff", border: "1px solid #e8e8e8", borderRadius: "12px" }}>
+            <p className="section-label" style={{ marginBottom: "16px" }}>Nutrition Per Serving</p>
+            <div className="nutrition-grid">
+              {[["Calories", macros.calories], ["Protein", macros.protein], ["Carbs", macros.carbs], ["Fat", macros.fat]].map(([label, val]) => (
+                <div key={label} className="nutrition-card">
+                  <p style={{ margin: 0, fontSize: "22px", fontWeight: "700", color: "#1a1a1a", fontFamily: "sans-serif" }}>{val}</p>
+                  <p style={{ margin: "4px 0 0 0", fontFamily: "sans-serif", fontSize: "11px", color: "#888", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -664,59 +342,20 @@ function App() {
         )}
 
         {/* Recipe Card */}
-        {recipe && (
-          <div
-            style={{
-              marginTop: "24px",
-              padding: "40px",
-              backgroundColor: "#fff",
-              border: "1px solid #e0e0e0",
-              borderRadius: "8px",
-            }}
-          >
+        {recipe && !loading && (
+          <div className="fade-in" style={{ marginTop: "20px", padding: "40px", backgroundColor: "#fff", border: "1px solid #e8e8e8", borderRadius: "12px" }}>
             {formatRecipe(recipe)}
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div
-        style={{
-          borderTop: "1px solid #e0e0e0",
-          padding: "24px",
-          textAlign: "center",
-          marginTop: "48px",
-        }}
-      >
-        <a
-          href="/privacy"
-          style={{
-            fontFamily: "sans-serif",
-            fontSize: "12px",
-            color: "#888",
-            textDecoration: "none",
-          }}
-        >
-          Privacy Policy
-        </a>
+      <div style={{ borderTop: "1px solid #e8e8e8", padding: "28px 24px", textAlign: "center", marginTop: "48px" }}>
+        <a href="/privacy" style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#aaa", textDecoration: "none" }}>Privacy Policy</a>
         <span style={{ color: "#e0e0e0", margin: "0 12px" }}>|</span>
-        <a
-          href="/terms"
-          style={{
-            fontFamily: "sans-serif",
-            fontSize: "12px",
-            color: "#888",
-            textDecoration: "none",
-          }}
-        >
-          Terms of Service
-        </a>
+        <a href="/terms" style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#aaa", textDecoration: "none" }}>Terms of Service</a>
         <span style={{ color: "#e0e0e0", margin: "0 12px" }}>|</span>
-        <span
-          style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888" }}
-        >
-          © 2026 Nouri
-        </span>
+        <span style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#aaa" }}>© 2026 Nouri</span>
       </div>
     </div>
   );
