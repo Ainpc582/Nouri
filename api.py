@@ -1,9 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from recipe_builder import get_recipe, extract_macros
+import anthropic
+import base64
 
 app = FastAPI()
+client = anthropic.Anthropic()
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,3 +54,32 @@ def create_recipe(request: RecipeRequest):
         "recipe": recipe,
         "macros": macros
     }
+
+@app.post("/analyze-fridge")
+async def analyze_fridge(file: UploadFile = File(...)):
+    contents = await file.read()
+    image_data = base64.standard_b64encode(contents).decode("utf-8")
+
+    response = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=1024,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": file.content_type,
+                        "data": image_data,
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "List all the food ingredients you can see in this fridge. Return only a comma-separated list of ingredients, nothing else."
+                }
+            ]
+        }]
+    )
+
+    return {"ingredients": response.content[0].text}

@@ -1,4 +1,6 @@
 import anthropic
+import base64
+import httpx
 
 client = anthropic.Anthropic()
 system_prompt = """

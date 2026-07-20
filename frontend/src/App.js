@@ -362,21 +362,32 @@ function App() {
           </p>
 
           {mode === "1" && (
-            <input
-              placeholder="e.g. chicken, rice, broccoli, garlic"
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                fontSize: "15px",
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                fontFamily: "sans-serif",
-                boxSizing: "border-box",
-                outline: "none",
-              }}
-            />
+            <div>
+              <input
+                placeholder="e.g. chicken, rice, broccoli, garlic"
+                value={ingredients}
+                onChange={(e) => setIngredients(e.target.value)}
+                style={{ width: "100%", padding: "14px", fontSize: "15px", border: "1px solid #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", boxSizing: "border-box", outline: "none" }}
+              />
+              <p style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", margin: "12px 0 8px 0", textAlign: "center" }}>— or upload a photo of your fridge —</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  const res = await fetch("https://nouri-production-ed93.up.railway.app/analyze-fridge", {
+                    method: "POST",
+                    body: formData
+                  });
+                  const data = await res.json();
+                  setIngredients(data.ingredients);
+                }}
+                style={{ width: "100%", padding: "12px", border: "1px dashed #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", fontSize: "13px", boxSizing: "border-box", cursor: "pointer" }}
+              />
+            </div>
           )}
           {mode === "2" && (
             <div>
@@ -481,7 +492,7 @@ function App() {
           <p style={{ fontFamily: "sans-serif", fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#888", marginBottom: "12px" }}>
             Servings
           </p>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             {["1", "2", "4", "6"].map((n) => (
               <div
                 key={n}
@@ -502,6 +513,13 @@ function App() {
                 {n}
               </div>
             ))}
+            <input
+              type="number"
+              min="1"
+              placeholder="Custom"
+              onChange={(e) => setServings(e.target.value)}
+              style={{ padding: "10px", width: "80px", border: "2px solid #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", fontSize: "14px", outline: "none", textAlign: "center" }}
+            />
           </div>
         </div>
 
