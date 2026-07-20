@@ -383,7 +383,12 @@ function App() {
                     body: formData
                   });
                   const data = await res.json();
-                  setIngredients(data.ingredients);
+                  if (data.error) {
+                    setError(data.error);
+                  } else {
+                    setIngredients(data.ingredients);
+                    setError("");
+                  }
                 }}
                 style={{ width: "100%", padding: "12px", border: "1px dashed #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", fontSize: "13px", boxSizing: "border-box", cursor: "pointer" }}
               />

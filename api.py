@@ -60,6 +60,31 @@ async def analyze_fridge(file: UploadFile = File(...)):
     contents = await file.read()
     image_data = base64.standard_b64encode(contents).decode("utf-8")
 
+    validation = client.messages.create(
+        model="claude-opus-4-8",
+        max_tokens=10,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": file.content_type,
+                        "data": image_data,
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "Does this image show food, ingredients, or a fridge/pantry with food items? Reply only YES or NO."
+                }
+            ]
+        }]
+    )
+
+    if "NO" in validation.content[0].text.upper():
+        return {"error": "Please upload a photo of your fridge or ingredients."}
+
     response = client.messages.create(
         model="claude-opus-4-8",
         max_tokens=1024,
@@ -76,7 +101,7 @@ async def analyze_fridge(file: UploadFile = File(...)):
                 },
                 {
                     "type": "text",
-                    "text": "List all the food ingredients you can see in this fridge. Return only a comma-separated list of ingredients, nothing else."
+                    "text": "List all the food ingredients you can see in this image. Return only a comma-separated list of ingredients, nothing else."
                 }
             ]
         }]
