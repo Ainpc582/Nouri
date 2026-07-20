@@ -221,6 +221,16 @@ function App() {
               </div>
             ))}
           </div>
+          <input
+            placeholder="Add custom diet (e.g. Paleo, Halal, Kosher)... press Enter"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.target.value.trim()) {
+                togglePref(e.target.value.trim());
+                e.target.value = "";
+              }
+            }}
+            style={{ marginTop: "10px", width: "100%", padding: "10px", fontSize: "13px", border: "1px solid #e0e0e0", borderRadius: "8px", fontFamily: "sans-serif", boxSizing: "border-box", outline: "none" }}
+          />
         </div>
 
         {/* Mode Selector */}
@@ -545,6 +555,13 @@ function App() {
             {formatRecipe(recipe)}
           </div>
         )}
+      </div>
+
+      {/* Footer */}
+      <div style={{ borderTop: "1px solid #e0e0e0", padding: "24px", textAlign: "center", marginTop: "48px" }}>
+        <a href="/privacy" style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888", textDecoration: "none" }}>Privacy Policy</a>
+        <span style={{ color: "#e0e0e0", margin: "0 12px" }}>|</span>
+        <span style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#888" }}>Powered by Claude AI</span>
       </div>
     </div>
   );
